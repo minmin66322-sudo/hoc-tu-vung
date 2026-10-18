@@ -181,7 +181,7 @@ async function cloudInit(){
     if(learned.size!==before) refresh();
   }catch(e){setCloud('local')}}
 function backupCode(){return 'LINH3000:'+btoa(unescape(encodeURIComponent(JSON.stringify({v:1,learned:[...learned]}))))}
-function restoreCode(txt){const m=(txt||'').trim().match(/^LINH3000:(.+)$/s); if(!m) throw 0; const o=JSON.parse(decodeURIComponent(escape(atob(m[1].trim())))); if(!Array.isArray(o.learned)) throw 0; let n=0; o.learned.forEach(k=>{if(typeof k==='string'&&!learned.has(k)){learned.add(k);n++}}); persist(); return n}
+function restoreCode(txt){const t=String(txt||''); const i=t.lastIndexOf('LINH3000:'); if(i<0) throw 0; const b=t.slice(i+9).replace(/[^A-Za-z0-9+/=]/g,''); const o=JSON.parse(decodeURIComponent(escape(atob(b)))); if(!Array.isArray(o.learned)) throw 0; let n=0; o.learned.forEach(k=>{if(typeof k==='string'&&!learned.has(k)){learned.add(k);n++}}); persist(); return n}
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const allWords=LESSONS.flatMap(L=>L.words.map(w=>({...w,lid:L.id})));
