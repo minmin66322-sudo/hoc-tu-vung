@@ -76,7 +76,7 @@ h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.1
 .w.ok{background:transparent;color:inherit;text-decoration:underline;text-decoration-color:var(--good);text-decoration-thickness:2px;text-underline-offset:3px;font-weight:700}
 
 .list{display:grid;background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden}
-.row{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line)}
+.row{display:grid;grid-template-columns:minmax(0,1fr);grid-auto-flow:column;grid-auto-columns:auto;gap:10px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line)}
 .row:last-child{border-bottom:0}
 .row .wd{font-family:var(--f-read);font-weight:700;font-size:17px}
 .row .meta{font-size:13px;min-width:0}
@@ -146,6 +146,13 @@ h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.1
 @keyframes pulse{50%{transform:scale(1.08)}}
 @media (prefers-reduced-motion:reduce){.mic.on{animation:none}}
 .pr-status{text-align:center;font-size:15px}
+.pt-card{display:grid;gap:8px;text-align:center;padding:14px;border-radius:14px;background:var(--soft)}
+.pt-word{font-family:var(--f-read);font-size:34px;font-weight:700}
+.pchip{font-size:12px;font-weight:700;padding:2px 7px;border-radius:99px;border:1px solid var(--line);color:var(--muted);font-variant-numeric:tabular-nums}
+.pchip.good{color:var(--good);border-color:var(--good)}.pchip.mid{color:var(--gold);border-color:var(--gold)}.pchip.bad{color:var(--bad);border-color:var(--bad)}
+.say.pin[aria-pressed="true"]{color:var(--gold);border-color:var(--gold);font-weight:700}
+.sh.now{outline:2px solid var(--hl);outline-offset:2px}
+.sh-res:empty{display:none}
 .pr-score{font-family:var(--f-display);font-size:30px;margin-right:6px}.pr-score.good{color:var(--good)}.pr-score.mid{color:var(--gold)}.pr-score.bad{color:var(--bad)}
 .toast{position:fixed;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:30;max-width:560px;margin:0 auto;background:var(--ink);color:var(--bg);padding:12px 14px;border-radius:12px;font-size:14px;box-shadow:0 6px 24px rgb(0 0 0 / .25)}
 .sync{font-size:14px;font-weight:600;color:var(--muted)}.sync.ok{color:var(--good)}.sync.warn{color:var(--gold)}
@@ -161,13 +168,16 @@ let learned=new Set();
 try{learned=new Set(JSON.parse(localStorage.getItem(KEY)||'[]'))}catch(e){}
 let LS_OK=false; try{localStorage.setItem('linh3000.t','1'); LS_OK=localStorage.getItem('linh3000.t')==='1'; localStorage.removeItem('linh3000.t')}catch(e){}
 try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist() }catch(e){}
-function persistLocal(){try{localStorage.setItem(KEY,JSON.stringify([...learned]))}catch(e){}}
+let PINS=new Set(), PRON={};
+try{PINS=new Set(JSON.parse(localStorage.getItem('linh3000.pins')||'[]'))}catch(e){}
+try{PRON=JSON.parse(localStorage.getItem('linh3000.pron')||'{}')||{}}catch(e){}
+function persistLocal(){try{localStorage.setItem(KEY,JSON.stringify([...learned]));localStorage.setItem('linh3000.pins',JSON.stringify([...PINS]));localStorage.setItem('linh3000.pron',JSON.stringify(PRON))}catch(e){}}
 function persist(){persistLocal();cloudSave()}
 /* ---- Lưu tiến độ vào tài khoản Claude (đồng bộ mọi thiết bị) ---- */
 const CLOUD={ref:null,state:'local',timer:null};
 function setCloud(st){CLOUD.state=st;const el=document.getElementById('sync');if(el)el.innerHTML=syncHtml()}
 function syncHtml(){return CLOUD.state==='ok'?'<span class="sync ok">☁ Đã lưu vào tài khoản Claude của bạn</span>':CLOUD.state==='saving'?'<span class="sync">☁ Đang lưu…</span>':CLOUD.state==='wait'?'<span class="sync">☁ Đang kết nối tài khoản…</span>':CLOUD.state==='err'?'<span class="sync warn">Chưa lưu được lên tài khoản, đang giữ trên máy này</span>':(LS_OK?'<span class="sync ok">✓ Đã lưu trên máy này ('+learned.size+' từ). Nên Sao lưu định kỳ.</span>':'<span class="sync warn">⚠ Trình duyệt đang chặn lưu dữ liệu, có thể do đang mở ở chế độ Riêng tư. Hãy mở bằng tab thường hoặc từ biểu tượng ngoài màn hình chính.</span>')}
-function cloudSave(){if(!CLOUD.ref)return;clearTimeout(CLOUD.timer);setCloud('saving');CLOUD.timer=setTimeout(async()=>{try{await CLOUD.ref.set({learned:[...learned],updatedAt:Date.now()});setCloud('ok')}catch(e){setCloud('err')}},1200)}
+function cloudSave(){if(!CLOUD.ref)return;clearTimeout(CLOUD.timer);setCloud('saving');CLOUD.timer=setTimeout(async()=>{try{await CLOUD.ref.set({learned:[...learned],pins:[...PINS],pron:PRON,updatedAt:Date.now()});setCloud('ok')}catch(e){setCloud('err')}},1200)}
 async function cloudInit(){
   if(!(window.claude&&typeof window.claude.use==='function'))return;
   setCloud('wait');
@@ -175,13 +185,17 @@ async function cloudInit(){
     const uid=user?await user.id():null; if(!db||!uid){setCloud('local');return}
     const ref=db.doc('data/users/'+uid+'/progress'); const snap=await ref.get();
     const remote=snap.exists&&Array.isArray(snap.data().learned)?snap.data().learned:[];
-    const before=learned.size; remote.forEach(k=>learned.add(k)); persistLocal();
+    const before=learned.size; remote.forEach(k=>learned.add(k));
+    const d0=snap.exists?snap.data():{}; let extra=false;
+    if(Array.isArray(d0.pins)) d0.pins.forEach(k=>{if(!PINS.has(k)){PINS.add(k);extra=true}});
+    if(d0.pron&&typeof d0.pron==='object') Object.entries(d0.pron).forEach(([k,v])=>{if(typeof v==='number'&&!(PRON[k]>=v)){PRON[k]=v;extra=true}});
+    persistLocal();
     CLOUD.ref=ref;
-    if(remote.length!==learned.size){ cloudSave() } else setCloud('ok');
+    if(remote.length!==learned.size||extra||!Array.isArray(d0.pins)){ cloudSave() } else setCloud('ok');
     if(learned.size!==before) refresh();
   }catch(e){setCloud('local')}}
-function backupCode(){return 'LINH3000:'+btoa(unescape(encodeURIComponent(JSON.stringify({v:1,learned:[...learned]}))))}
-function restoreCode(txt){const t=String(txt||''); const i=t.lastIndexOf('LINH3000:'); if(i<0) throw 0; const b=t.slice(i+9).replace(/[^A-Za-z0-9+/=]/g,''); const o=JSON.parse(decodeURIComponent(escape(atob(b)))); if(!Array.isArray(o.learned)) throw 0; let n=0; o.learned.forEach(k=>{if(typeof k==='string'&&!learned.has(k)){learned.add(k);n++}}); persist(); return n}
+function backupCode(){return 'LINH3000:'+btoa(unescape(encodeURIComponent(JSON.stringify({v:2,learned:[...learned],pins:[...PINS],pron:PRON}))))}
+function restoreCode(txt){const t=String(txt||''); const i=t.lastIndexOf('LINH3000:'); if(i<0) throw 0; const b=t.slice(i+9).replace(/[^A-Za-z0-9+/=]/g,''); const o=JSON.parse(decodeURIComponent(escape(atob(b)))); if(!Array.isArray(o.learned)) throw 0; let n=0; o.learned.forEach(k=>{if(typeof k==='string'&&!learned.has(k)){learned.add(k);n++}}); if(Array.isArray(o.pins)) o.pins.forEach(k=>typeof k==='string'&&PINS.add(k)); if(o.pron&&typeof o.pron==='object') Object.entries(o.pron).forEach(([k,v])=>{if(typeof v==='number'&&!(PRON[k]>=v)) PRON[k]=v}); persist(); return n}
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const allWords=LESSONS.flatMap(L=>L.words.map(w=>({...w,lid:L.id})));
@@ -369,6 +383,88 @@ function pronounce(text){
 function findKeyFor(t){const w=String(t).trim().toLowerCase(); for(const L of LESSONS){const x=L.words.find(x=>x.w.toLowerCase()===w); if(x) return keyOf(L.id,x.w)} return null}
 const micBtn=(t,label)=>CAN_REC?`<button class="${label?'say':'ic'} micb" data-rec="${esc(t)}" aria-label="Luyện phát âm">${label||'🎤'}</button>`:'';
 
+/* ---------- NHẬN GIỌNG 1 LẦN (dùng chung) ---------- */
+function recErrMsg(e){return e==='not-allowed'||e==='service-not-allowed'?'Chưa cho phép micro/nhận giọng nói. Vào Cài đặt → Safari → Micrô (và Nhận dạng giọng nói), chọn Cho phép.':e==='no-speech'?'Không nghe thấy tiếng. Nói to và gần micro hơn.':e==='network'?'Cần có mạng để nhận giọng nói.':e==='aborted'?'Đã dừng.':'Có lỗi ('+e+'). Thử lại nhé.'}
+function recOnce(text,onInterim){return new Promise((res,rej)=>{
+  if(!CAN_REC) return rej('unsupported');
+  if(REC){try{REC.abort()}catch(e){}} if(AUD.el)AUD.el.pause(); if(WA.el)WA.el.pause();
+  const target=toks(text); const r=new SRx(); REC=r; r.lang='en-US'; r.interimResults=true; r.maxAlternatives=5; r.continuous=false;
+  let finals=[], err=null;
+  r.onresult=ev=>{let interim='';for(let k=ev.resultIndex;k<ev.results.length;k++){const x=ev.results[k]; if(x.isFinal) finals.push([...x].map(a=>a.transcript)); else interim+=x[0].transcript} if(onInterim&&interim) onInterim(interim)};
+  r.onerror=ev=>{err=ev.error};
+  r.onend=()=>{ if(!finals.length) return rej(err||'no-speech');
+    const alts=finals.length===1?finals[0]:[finals.map(f=>f[0]).join(' ')]; let best=null;
+    alts.forEach(a=>{const h=toks(a); let ok=align(target,h); if(target.length===1&&h.some(w=>eq(w,target[0]))) ok=[true]; const sc=ok.filter(Boolean).length; if(!best||sc>best.sc) best={heard:a,ok,sc}});
+    res({...best,target,pct:Math.round(best.sc/Math.max(1,target.length)*100)}) };
+  try{r.start()}catch(e){rej('start')} })}
+const NO_MIC_NOTE=IN_CLAUDE?'Micro bị chặn trong Claude. Mở bản web trên Safari (minmin66322-sudo.github.io/hoc-tu-vung) để được chấm điểm.':'Trình duyệt này chưa hỗ trợ nhận giọng nói. Trên iPhone hãy dùng Safari.';
+const scoreCls=p=>p>=85?'good':p>=60?'mid':'bad';
+
+/* ---------- TAB: KIỂM TRA PHÁT ÂM TỪ VỰNG ---------- */
+let PT=null;
+function renderSpeak(L){
+  const p=$('#panel'), keys=L.words.map(w=>keyOf(L.id,w.w)), done=keys.filter(k=>PRON[k]>=85).length;
+  p.innerHTML=`<section class="card">
+    <div class="pl-row" style="justify-content:space-between"><div><span class="eyebrow">Kiểm tra phát âm từ vựng</span><div style="font-size:15px;margin-top:4px">Đạt <b>${done}/${L.words.length}</b> từ (từ 85% trở lên)</div></div></div>
+    ${CAN_REC?`<div class="pl-row"><button class="btn primary" id="ptAll">🎤 Kiểm tra cả chương</button>${done<L.words.length&&done>0?`<button class="btn" id="ptBad">Chỉ từ chưa đạt</button>`:''}</div>`:`<div class="muted" style="font-size:14px">${NO_MIC_NOTE}</div>`}
+    <div id="ptBox"></div></section>
+    <div class="list">${L.words.map(w=>{const k=keyOf(L.id,w.w),v=PRON[k];return `<div class="row"><div style="min-width:0"><span class="wd">${esc(w.w)}</span><div class="meta"><span class="ipa">/${w.ipa}/</span> · ${esc(w.vi)}</div></div>${v!=null?`<span class="pchip ${scoreCls(v)}">${v}%</span>`:'<span class="pchip">–</span>'}${sayBtn(w.w)}${CAN_REC?`<button class="ic" data-ptone="${esc(w.w)}" aria-label="Đọc thử">🎤</button>`:''}</div>`}).join('')}</div>`;
+  const a=$('#ptAll'), b=$('#ptBad');
+  if(a) a.onclick=()=>startPT(L,L.words);
+  if(b) b.onclick=()=>startPT(L,L.words.filter(w=>!(PRON[keyOf(L.id,w.w)]>=85)));
+}
+function startPT(L,list){PT={L,list,i:0,res:[]}; drawPT()}
+function drawPT(){const box=$('#ptBox'); if(!box||!PT) return; const {L,list,i}=PT;
+  if(i>=list.length){const good=PT.res.filter(x=>x>=85).length; box.innerHTML=`<div class="pt-card"><div class="score">${good}/${list.length}</div><div>từ đạt. ${good===list.length?'Xuất sắc!':'Bấm “Chỉ từ chưa đạt” để luyện lại.'}</div></div>`; PT=null; setTimeout(()=>renderSpeak(L),1600); return}
+  const w=list[i];
+  box.innerHTML=`<div class="pt-card"><div class="count">Từ ${i+1}/${list.length}</div><div class="big pt-word">${esc(w.w)}</div><div class="ipa" style="font-size:19px">/${w.ipa}/</div><div class="muted">${esc(w.vi)}</div>
+    <div class="pl-row" style="justify-content:center">${sayBtn(w.w,'🔊 Nghe mẫu')}</div>
+    <button class="mic" id="ptMic" aria-label="Bấm rồi đọc">🎤</button><div class="pr-status" id="ptS">Bấm 🎤 rồi đọc từ này</div>
+    <div class="fc-actions"><button class="btn" id="ptSkip">Bỏ qua</button><button class="btn primary" id="ptNext" hidden>Tiếp →</button></div></div>`;
+  $('#ptSkip').onclick=()=>{PT.res.push(0);PT.i++;drawPT()};
+  $('#ptNext').onclick=()=>{PT.i++;drawPT()};
+  $('#ptMic').onclick=async()=>{const m=$('#ptMic'),st=$('#ptS'); m.classList.add('on'); st.textContent='Đang nghe…';
+    try{const r=await recOnce(w.w,t=>{st.textContent='Máy nghe: '+t}); const k=keyOf(L.id,w.w); PRON[k]=Math.max(PRON[k]||0,r.pct); if(r.pct===100) learned.add(k); persist();
+      st.innerHTML=`<b class="pr-score ${scoreCls(r.pct)}">${r.pct===100?'✓ Đúng':'✗ Chưa đúng'}</b><br><span class="muted">Máy nghe: “${esc(r.heard)}”</span>`; PT.res[PT.i]=r.pct; $('#ptNext').hidden=false; if(r.pct===100) setTimeout(()=>{if(PT&&PT.list[PT.i]===w){PT.i++;drawPT()}},1200)}
+    catch(e){st.textContent=recErrMsg(e)} m.classList.remove('on')};
+}
+async function pronOne(L,word){const box=$('#ptBox'); startPT(L,[L.words.find(w=>w.w===word)]); box&&box.scrollIntoView({behavior:'smooth',block:'center'})}
+
+/* ---------- TAB: SHADOWING ---------- */
+const SH={run:false,reps:1};
+function pinnedOf(L){return L.story.map((s,i)=>i).filter(i=>PINS.has(L.id+':'+i))}
+function waitPause(){return new Promise(r=>AUD.el.addEventListener('pause',r,{once:true}))}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function renderShadow(L){
+  const p=$('#panel'), ids=pinnedOf(L), T=TIM(L.id);
+  if(!ids.length){p.innerHTML=`<section class="card"><span class="eyebrow">Shadowing</span><p style="margin:0">Chưa chọn câu nào. Vào tab <b>Truyện</b>, bấm <b>☆</b> ở những câu bạn muốn luyện nói theo.</p><button class="btn primary" id="goStory">Chọn câu trong Truyện</button></section>`; $('#goStory').onclick=()=>{state.tab='story';renderTab()}; return}
+  p.innerHTML=`<section class="card"><span class="eyebrow">Shadowing · ${ids.length} câu đã chọn</span>
+    <div class="muted" style="font-size:14px">Cách luyện: nghe mẫu, rồi nói lại ngay, bắt chước nhịp và ngữ điệu. Chế độ tự động: phát mẫu, chừa khoảng lặng để bạn nói theo, lặp lại theo số lần chọn.</div>
+    <div class="pl-row"><button class="btn primary" id="shRun">${SH.run?'■ Dừng':'▶ Chạy tự động'}</button>
+      <span class="chips">${[0.75,1].map(r=>`<button class="chip" data-rate="${r}" aria-pressed="${rate===r}">${r}×</button>`).join('')}</span>
+      <span class="chips">${[1,2,3].map(n=>`<button class="chip" data-reps="${n}" aria-pressed="${SH.reps===n}">${n} lần</button>`).join('')}</span></div>
+    ${CAN_REC?'':`<div class="muted" style="font-size:13px">${NO_MIC_NOTE}</div>`}</section>
+    ${ids.map(i=>{const s=L.story[i];return `<section class="card sh" data-shi="${i}"><div class="en">${esc(plain(s[0]))}</div><div class="sipa">/${esc(s[3])}/</div>${showVi?`<div class="vi">${esc(s[1])}</div>`:''}
+      <div class="sent-tools"><button class="say" data-sent="${i}">🔊 Nghe mẫu</button>${CAN_REC?`<button class="say" data-shrec="${i}">🎤 Nói theo</button>`:''}<button class="say" data-pin="${i}" aria-pressed="true">★ Bỏ chọn</button></div>
+      <div class="sh-res" id="shr${i}"></div></section>`}).join('')}`;
+  $('#shRun').onclick=()=>{ if(SH.run){SH.run=false;AUD.el.pause();renderShadow(L)} else runShadow(L) };
+}
+async function runShadow(L){ const ids=pinnedOf(L), T=TIM(L.id); SH.run=true; renderShadow(L);
+  try{ for(const i of ids){ for(let k=0;k<SH.reps;k++){ if(!SH.run||state.id!==L.id||state.tab!=='shadow') throw 0;
+        document.querySelectorAll('.sh').forEach(e=>e.classList.toggle('now',+e.dataset.shi===i));
+        const card=document.querySelector('.sh[data-shi="'+i+'"]'); card&&card.scrollIntoView({behavior:'smooth',block:'center'});
+        if(T){ await playSent(L,i); await waitPause(); } else { ttsSegs(L.story[i][4]); await sleep(3000) }
+        if(!SH.run) throw 0;
+        const dur=T?(T.t[i][1]-T.t[i][0])/rate:3; const r=$('#shr'+i); if(r) r.innerHTML='<span class="muted">🗣 Nói theo…</span>';
+        await sleep(dur*1000+900); if(r) r.innerHTML='' } } }catch(e){}
+  SH.run=false; document.querySelectorAll('.sh').forEach(e=>e.classList.remove('now')); if(state.tab==='shadow'&&state.id===L.id) renderShadow(L) }
+async function shadowRec(L,i){ const r=$('#shr'+i); const s=plain(L.story[i][0]); if(r) r.innerHTML='<span class="muted">🎤 Đang nghe… hãy nói cả câu</span>';
+  try{ const x=await recOnce(s,t=>{if(r) r.innerHTML='<span class="muted">Máy nghe: '+esc(t)+'</span>'});
+    const words=s.split(/\s+/); let ti=0; const html=words.map(w=>{const n=toks(w).length; if(!n) return esc(w); const ok=x.ok.slice(ti,ti+n).every(Boolean); ti+=n; return `<span class="pw ${ok?'good':'bad'}">${esc(w)}</span>`}).join(' ');
+    PRON['s:'+L.id+':'+i]=Math.max(PRON['s:'+L.id+':'+i]||0,x.pct); persist();
+    r.innerHTML=`<div class="pr-target" style="font-size:18px">${html}</div><div><b class="pr-score ${scoreCls(x.pct)}">${x.pct}%</b> <span class="muted">Máy nghe: “${esc(x.heard)}”</span></div>`;
+  }catch(e){ if(r) r.innerHTML='<span class="muted">'+recErrMsg(e)+'</span>' } }
+
 /* ---------- OXFORD LIST ---------- */
 let ox={lv:'all',st:'all',q:'',n:150};
 function oxView(){
@@ -392,7 +488,7 @@ function drawOx(){
 
 /* ---------- LESSON ---------- */
 let state={view:'home'}, showVi=false;
-const TABS=[['story','Truyện'],['words','Từ vựng'],['grammar','Thì & cấu trúc'],['family','Word family'],['flash','Thẻ nhớ'],['quiz','Kiểm tra']];
+const TABS=[['story','Truyện'],['words','Từ vựng'],['grammar','Thì & cấu trúc'],['family','Word family'],['flash','Thẻ nhớ'],['quiz','Kiểm tra'],['speak','Phát âm'],['shadow','Shadowing']];
 function lesson(id,tab){
   const L=LESSONS.find(l=>l.id===id); const i=LESSONS.indexOf(L);
   state={view:'lesson',id,tab:tab||'story',tense:0};
@@ -418,7 +514,7 @@ function renderTab(){
       ${T?`<div class="pl-row"><button class="btn" id="dl">⬇ Tải file nghe chương này</button><span class="muted" id="dlmsg" style="font-size:13px"></span></div>`:''}
     </section>
     <div class="toolbar"><button class="pill" id="tipa" aria-pressed="${showIpa}">IPA dưới câu</button><button class="pill" id="tv" aria-pressed="${showVi}">Bản dịch</button><span class="muted" style="font-size:13px">${lessonDone(L)}/${L.words.length} từ đã thuộc</span></div>
-    <article class="story">${L.story.map((s,i)=>{const who=[...new Set(s[4].filter(g=>g.sp!=='narrator').map(g=>g.sp))];return `<div class="sent" data-i="${i}">${who.length?`<div class="spk-row">${who.map(sp=>`<span class="spk sp-${sp}">${SPEAKERS[sp].name}</span>`).join('')}</div>`:''}<div class="en">${marked(s[0],L.id)}</div>${showIpa?`<div class="sipa">/${esc(s[3])}/</div>`:''}${showVi?`<div class="vi">${esc(s[1])}</div>`:''}<div class="sent-tools"><span class="g">${esc(s[2])}</span><button class="say" data-sent="${i}">🔊 câu</button>${micBtn(plain(s[0]),'🎤 đọc')}</div></div>`}).join('')}</article>`;
+    <article class="story">${L.story.map((s,i)=>{const who=[...new Set(s[4].filter(g=>g.sp!=='narrator').map(g=>g.sp))];return `<div class="sent" data-i="${i}">${who.length?`<div class="spk-row">${who.map(sp=>`<span class="spk sp-${sp}">${SPEAKERS[sp].name}</span>`).join('')}</div>`:''}<div class="en">${marked(s[0],L.id)}</div>${showIpa?`<div class="sipa">/${esc(s[3])}/</div>`:''}${showVi?`<div class="vi">${esc(s[1])}</div>`:''}<div class="sent-tools"><span class="g">${esc(s[2])}</span><button class="say pin" data-pin="${i}" aria-pressed="${PINS.has(L.id+':'+i)}" title="Chọn câu để shadowing">${PINS.has(L.id+':'+i)?'★ shadowing':'☆'}</button><button class="say" data-sent="${i}">🔊 câu</button>${micBtn(plain(s[0]),'🎤 đọc')}</div></div>`}).join('')}</article>`;
     $('#tv').onclick=()=>{showVi=!showVi;renderTab()};
     $('#tipa').onclick=()=>{showIpa=!showIpa;try{localStorage.setItem('linh3000.ipa',showIpa?'1':'0')}catch(e){}renderTab()};
     $('#playAll').onclick=()=>playAll(L);
@@ -439,6 +535,8 @@ function renderTab(){
   }
   if(state.tab==='flash'){startFlash(L)}
   if(state.tab==='quiz'){startQuiz(L)}
+  if(state.tab==='speak'){renderSpeak(L)}
+  if(state.tab==='shadow'){renderShadow(L)}
 }
 
 /* ---------- FLASHCARDS ---------- */
@@ -508,6 +606,10 @@ document.addEventListener('click',e=>{
   const t=e.target.closest('button,[data-close]'); if(!t)return;
   if(t.dataset.say!==undefined){speak(t.dataset.say);return}
   if(t.dataset.rec!==undefined){pronounce(t.dataset.rec);return}
+  if(t.dataset.pin!==undefined){const k=state.id+':'+t.dataset.pin; PINS.has(k)?PINS.delete(k):PINS.add(k); persist(); renderTab(); return}
+  if(t.dataset.reps){SH.reps=+t.dataset.reps; document.querySelectorAll('[data-reps]').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.reps===SH.reps)); return}
+  if(t.dataset.shrec!==undefined){shadowRec(LESSONS.find(l=>l.id===state.id),+t.dataset.shrec); return}
+  if(t.dataset.ptone!==undefined){pronOne(LESSONS.find(l=>l.id===state.id),t.dataset.ptone); return}
   if(t.dataset.close!==undefined){closeSheet();return}
   if(t.dataset.learn){const k=t.dataset.learn;learned.has(k)?learned.delete(k):learned.add(k);persist();const inSheet=t.closest('.sheet');closeSheet();refresh();if(inSheet)return;return}
   if(t.dataset.w){openSheet(t.dataset.l,t.dataset.w);return}
@@ -516,7 +618,7 @@ document.addEventListener('click',e=>{
   if(t.dataset.ox!==undefined){oxView();window.scrollTo(0,0);return}
   if(t.dataset.oxlv){ox.lv=t.dataset.oxlv;ox.n=150;oxView();return}
   if(t.dataset.oxst){ox.st=t.dataset.oxst;ox.n=150;oxView();return}
-  if(t.dataset.tab){state.tab=t.dataset.tab;renderTab();return}
+  if(t.dataset.tab){SH.run=false;state.tab=t.dataset.tab;renderTab();return}
   if(t.dataset.tense){state.tense=+t.dataset.tense;renderTab();return}
   if(t.dataset.sent!==undefined){playSent(LESSONS.find(l=>l.id===state.id),+t.dataset.sent);return}
   if(t.dataset.rate){rate=+t.dataset.rate;if(AUD.el)AUD.el.playbackRate=rate;document.querySelectorAll('[data-rate]').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.rate===rate));return}
