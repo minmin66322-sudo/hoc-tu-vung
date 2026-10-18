@@ -159,12 +159,14 @@ const WTIMINGS={"morning": {"file": "w01-morning.mp3", "w": {"alarm": [0.2, 1.2]
 const TARGET=OX.length, KEY='linh3000.learned';
 let learned=new Set();
 try{learned=new Set(JSON.parse(localStorage.getItem(KEY)||'[]'))}catch(e){}
+let LS_OK=false; try{localStorage.setItem('linh3000.t','1'); LS_OK=localStorage.getItem('linh3000.t')==='1'; localStorage.removeItem('linh3000.t')}catch(e){}
+try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist() }catch(e){}
 function persistLocal(){try{localStorage.setItem(KEY,JSON.stringify([...learned]))}catch(e){}}
 function persist(){persistLocal();cloudSave()}
 /* ---- Lưu tiến độ vào tài khoản Claude (đồng bộ mọi thiết bị) ---- */
 const CLOUD={ref:null,state:'local',timer:null};
 function setCloud(st){CLOUD.state=st;const el=document.getElementById('sync');if(el)el.innerHTML=syncHtml()}
-function syncHtml(){return CLOUD.state==='ok'?'<span class="sync ok">☁ Đã lưu vào tài khoản Claude của bạn</span>':CLOUD.state==='saving'?'<span class="sync">☁ Đang lưu…</span>':CLOUD.state==='wait'?'<span class="sync">☁ Đang kết nối tài khoản…</span>':CLOUD.state==='err'?'<span class="sync warn">Chưa lưu được lên tài khoản, đang giữ trên máy này</span>':'<span class="sync warn">Chỉ lưu trên máy này. Dùng Sao lưu bên dưới để giữ tiến độ</span>'}
+function syncHtml(){return CLOUD.state==='ok'?'<span class="sync ok">☁ Đã lưu vào tài khoản Claude của bạn</span>':CLOUD.state==='saving'?'<span class="sync">☁ Đang lưu…</span>':CLOUD.state==='wait'?'<span class="sync">☁ Đang kết nối tài khoản…</span>':CLOUD.state==='err'?'<span class="sync warn">Chưa lưu được lên tài khoản, đang giữ trên máy này</span>':(LS_OK?'<span class="sync ok">✓ Đã lưu trên máy này ('+learned.size+' từ). Nên Sao lưu định kỳ.</span>':'<span class="sync warn">⚠ Trình duyệt đang chặn lưu dữ liệu, có thể do đang mở ở chế độ Riêng tư. Hãy mở bằng tab thường hoặc từ biểu tượng ngoài màn hình chính.</span>')}
 function cloudSave(){if(!CLOUD.ref)return;clearTimeout(CLOUD.timer);setCloud('saving');CLOUD.timer=setTimeout(async()=>{try{await CLOUD.ref.set({learned:[...learned],updatedAt:Date.now()});setCloud('ok')}catch(e){setCloud('err')}},1200)}
 async function cloudInit(){
   if(!(window.claude&&typeof window.claude.use==='function'))return;
