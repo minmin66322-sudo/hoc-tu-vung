@@ -245,10 +245,10 @@ function home(){
   <section class="card" id="saveCard" style="margin-top:18px">
     <span class="eyebrow">Lịch sử học</span>
     <div id="sync">${syncHtml()}</div>
-    <p class="muted" style="margin:0;font-size:13px">Mở app bằng tài khoản Claude để tiến độ tự lưu và đồng bộ giữa điện thoại, máy tính. Nếu dùng file tải về (không có mạng), hãy sao lưu thường xuyên.</p>
+    <p class="muted" style="margin:0;font-size:13px">${IN_CLAUDE?'Tiến độ tự lưu vào tài khoản Claude và đồng bộ giữa các thiết bị.':'Bản web lưu trên trình duyệt của máy này. Để chuyển tiến độ từ bản trong Claude: bấm Sao lưu ở bản Claude, Sao chép mã, rồi sang đây bấm Khôi phục và dán vào.'}</p>
     <div class="pl-row"><button class="btn" id="bk">Sao lưu</button><button class="btn" id="rs">Khôi phục</button></div>
     <div id="bkbox" hidden style="display:grid;gap:8px">
-      <textarea id="bktext" rows="3" style="width:100%;font:13px/1.4 ui-monospace,monospace;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)"></textarea>
+      <textarea id="bktext" rows="3" style="width:100%;font:16px/1.4 ui-monospace,monospace;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)"></textarea>
       <div class="pl-row"><button class="btn primary" id="bkgo"></button><span class="muted" id="bkmsg" style="font-size:13px"></span></div>
     </div>
   </section>
