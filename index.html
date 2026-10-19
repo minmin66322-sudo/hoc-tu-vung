@@ -153,6 +153,32 @@ h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.1
 .say.pin[aria-pressed="true"]{color:var(--gold);border-color:var(--gold);font-weight:700}
 .sh.now{outline:2px solid var(--hl);outline-offset:2px}
 .sh-res:empty{display:none}
+.today{margin-top:14px;padding:16px;border-radius:18px;background:var(--surface);border:1.5px solid var(--accent);display:grid;gap:12px}
+.td-top{display:flex;gap:12px;align-items:flex-start;justify-content:space-between}
+.td-title{font-size:20px;font-weight:800;margin-top:2px}
+.flame{flex:none;width:68px;height:68px;border-radius:50%;display:grid;place-items:center;align-content:center;background:var(--soft);color:var(--muted);text-align:center;line-height:1}
+.flame b{font-family:var(--f-display);font-size:24px}.flame span{font-size:10px;margin-top:2px}
+.flame.on{background:color-mix(in srgb,var(--gold) 22%,var(--surface));color:var(--gold)}
+.slots{display:grid;gap:8px}
+.slot{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:10px;align-items:center;text-align:left;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg)}
+.slot-t{font-family:var(--f-display);font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums}
+.slot-n{font-weight:600;min-width:0}.slot-m{font-size:12px;color:var(--muted)}
+.slot.done{background:color-mix(in srgb,var(--good) 12%,var(--surface));border-color:var(--good)}.slot.done .slot-m{color:var(--good);font-weight:700}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;text-align:center}
+.stats b{display:block;font-family:var(--f-display);font-size:24px;color:var(--accent);font-variant-numeric:tabular-nums}.stats span{font-size:11px;color:var(--muted)}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cal .wd{font-size:11px;font-weight:700;color:var(--muted);text-align:center}
+.cd{aspect-ratio:1;max-width:100%;border-radius:8px;display:grid;place-items:center;align-content:center;font-size:13px;background:var(--soft);position:relative;line-height:1}
+.cd b{font-weight:600}.cd i{font-style:normal;font-size:10px}
+.cd.sun b{color:var(--bad)}
+.cd.l1{background:color-mix(in srgb,var(--good) 25%,var(--surface))}.cd.l2{background:color-mix(in srgb,var(--good) 50%,var(--surface))}.cd.l3{background:var(--good);color:var(--surface)}.cd.l3 b{color:var(--surface)}
+.cd.cd-now{outline:2px solid var(--accent);outline-offset:1px}
+.cd.mile{box-shadow:inset 0 0 0 2px var(--rain)}
+.cd.key{display:inline-block;width:14px;height:14px;aspect-ratio:auto;vertical-align:-2px;margin:0 2px 0 8px}
+.badges{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.bdg{display:grid;justify-items:center;align-content:start;gap:4px;padding:8px 2px;border-radius:12px;border:1px dashed var(--line);text-align:center;opacity:.45;filter:grayscale(1)}
+.bdg span{font-size:22px}.bdg small{font-size:10.5px;line-height:1.2}
+.bdg.ok{opacity:1;filter:none;border-style:solid;border-color:var(--gold);background:color-mix(in srgb,var(--gold) 10%,var(--surface))}
 .chat{display:grid;gap:10px}
 .msg{display:flex;gap:8px;align-items:flex-end;max-width:100%}
 .msg .bub{padding:10px 12px;border-radius:16px;min-width:0;max-width:85%;display:grid;gap:4px;justify-items:start}
@@ -183,13 +209,14 @@ try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist(
 let PINS=new Set(), PRON={};
 try{PINS=new Set(JSON.parse(localStorage.getItem('linh3000.pins')||'[]'))}catch(e){}
 try{PRON=JSON.parse(localStorage.getItem('linh3000.pron')||'{}')||{}}catch(e){}
-function persistLocal(){try{localStorage.setItem(KEY,JSON.stringify([...learned]));localStorage.setItem('linh3000.pins',JSON.stringify([...PINS]));localStorage.setItem('linh3000.pron',JSON.stringify(PRON))}catch(e){}}
+let ACT={}; try{ACT=JSON.parse(localStorage.getItem('linh3000.act')||'{}')||{}}catch(e){}
+function persistLocal(){try{localStorage.setItem('linh3000.act',JSON.stringify(ACT));localStorage.setItem(KEY,JSON.stringify([...learned]));localStorage.setItem('linh3000.pins',JSON.stringify([...PINS]));localStorage.setItem('linh3000.pron',JSON.stringify(PRON))}catch(e){}}
 function persist(){persistLocal();cloudSave()}
 /* ---- Lưu tiến độ vào tài khoản Claude (đồng bộ mọi thiết bị) ---- */
 const CLOUD={ref:null,state:'local',timer:null};
 function setCloud(st){CLOUD.state=st;const el=document.getElementById('sync');if(el)el.innerHTML=syncHtml()}
 function syncHtml(){return CLOUD.state==='ok'?'<span class="sync ok">☁ Đã lưu vào tài khoản Claude của bạn</span>':CLOUD.state==='saving'?'<span class="sync">☁ Đang lưu…</span>':CLOUD.state==='wait'?'<span class="sync">☁ Đang kết nối tài khoản…</span>':CLOUD.state==='err'?'<span class="sync warn">Chưa lưu được lên tài khoản, đang giữ trên máy này</span>':(LS_OK?'<span class="sync ok">✓ Đã lưu trên máy này ('+learned.size+' từ). Nên Sao lưu định kỳ.</span>':'<span class="sync warn">⚠ Trình duyệt đang chặn lưu dữ liệu, có thể do đang mở ở chế độ Riêng tư. Hãy mở bằng tab thường hoặc từ biểu tượng ngoài màn hình chính.</span>')}
-function cloudSave(){if(!CLOUD.ref)return;clearTimeout(CLOUD.timer);setCloud('saving');CLOUD.timer=setTimeout(async()=>{try{await CLOUD.ref.set({learned:[...learned],pins:[...PINS],pron:PRON,updatedAt:Date.now()});setCloud('ok')}catch(e){setCloud('err')}},1200)}
+function cloudSave(){if(!CLOUD.ref)return;clearTimeout(CLOUD.timer);setCloud('saving');CLOUD.timer=setTimeout(async()=>{try{await CLOUD.ref.set({learned:[...learned],pins:[...PINS],pron:PRON,act:ACT,updatedAt:Date.now()});setCloud('ok')}catch(e){setCloud('err')}},1200)}
 async function cloudInit(){
   if(!(window.claude&&typeof window.claude.use==='function'))return;
   setCloud('wait');
@@ -200,14 +227,15 @@ async function cloudInit(){
     const before=learned.size; remote.forEach(k=>learned.add(k));
     const d0=snap.exists?snap.data():{}; let extra=false;
     if(Array.isArray(d0.pins)) d0.pins.forEach(k=>{if(!PINS.has(k)){PINS.add(k);extra=true}});
+    if(d0.act&&typeof d0.act==='object') Object.entries(d0.act).forEach(([d,o])=>{if(o&&typeof o==='object'){ACT[d]=ACT[d]||{}; Object.entries(o).forEach(([k,v])=>{if(typeof v==='number'&&!(ACT[d][k]>=v)){ACT[d][k]=v;extra=true}})}});
     if(d0.pron&&typeof d0.pron==='object') Object.entries(d0.pron).forEach(([k,v])=>{if(typeof v==='number'&&!(PRON[k]>=v)){PRON[k]=v;extra=true}});
     persistLocal();
     CLOUD.ref=ref;
     if(remote.length!==learned.size||extra||!Array.isArray(d0.pins)){ cloudSave() } else setCloud('ok');
     if(learned.size!==before) refresh();
   }catch(e){setCloud('local')}}
-function backupCode(){return 'LINH3000:'+btoa(unescape(encodeURIComponent(JSON.stringify({v:2,learned:[...learned],pins:[...PINS],pron:PRON}))))}
-function restoreCode(txt){const t=String(txt||''); const i=t.lastIndexOf('LINH3000:'); if(i<0) throw 0; const b=t.slice(i+9).replace(/[^A-Za-z0-9+/=]/g,''); const o=JSON.parse(decodeURIComponent(escape(atob(b)))); if(!Array.isArray(o.learned)) throw 0; let n=0; o.learned.forEach(k=>{if(typeof k==='string'&&!learned.has(k)){learned.add(k);n++}}); if(Array.isArray(o.pins)) o.pins.forEach(k=>typeof k==='string'&&PINS.add(k)); if(o.pron&&typeof o.pron==='object') Object.entries(o.pron).forEach(([k,v])=>{if(typeof v==='number'&&!(PRON[k]>=v)) PRON[k]=v}); persist(); return n}
+function backupCode(){return 'LINH3000:'+btoa(unescape(encodeURIComponent(JSON.stringify({v:3,learned:[...learned],pins:[...PINS],pron:PRON,act:ACT}))))}
+function restoreCode(txt){const t=String(txt||''); const i=t.lastIndexOf('LINH3000:'); if(i<0) throw 0; const b=t.slice(i+9).replace(/[^A-Za-z0-9+/=]/g,''); const o=JSON.parse(decodeURIComponent(escape(atob(b)))); if(!Array.isArray(o.learned)) throw 0; let n=0; o.learned.forEach(k=>{if(typeof k==='string'&&!learned.has(k)){learned.add(k);n++}}); if(Array.isArray(o.pins)) o.pins.forEach(k=>typeof k==='string'&&PINS.add(k)); if(o.act&&typeof o.act==='object') Object.entries(o.act).forEach(([d,x])=>{if(x&&typeof x==='object'){ACT[d]=ACT[d]||{}; Object.entries(x).forEach(([k,v])=>{if(typeof v==='number'&&!(ACT[d][k]>=v)) ACT[d][k]=v})}}); if(o.pron&&typeof o.pron==='object') Object.entries(o.pron).forEach(([k,v])=>{if(typeof v==='number'&&!(PRON[k]>=v)) PRON[k]=v}); persist(); return n}
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const allWords=LESSONS.flatMap(L=>L.words.map(w=>({...w,lid:L.id})));
@@ -259,6 +287,7 @@ function home(){
       <div class="meter-row"><span><b>${n}</b> / ${TARGET} từ Oxford đã thuộc</span><span class="muted">${have}/${TARGET} từ đã có truyện · ${LESSONS.length} chương</span></div>
     </div>
   </header>
+  ${todayCard()}
   <input id="q" class="search" type="search" placeholder="Tìm từ tiếng Anh hoặc nghĩa tiếng Việt…" value="${esc(query)}" autocomplete="off">
   <button class="btn-wide" data-ox><span>Danh sách Oxford 3000 đầy đủ<br><span style="font-weight:500;font-size:13px;opacity:.85">Lọc theo A1 · A2 · B1 · B2, có IPA và nút nghe</span></span><span>→</span></button>
   <div id="res"></div>
@@ -327,7 +356,7 @@ function onTU(){const a=AUD.el; if(!a||!AUD.lid) return; const T=TIM(AUD.lid); i
   const i=a.paused&&AUD.end==null&&t===0?-1:T.t.findIndex(x=>t>=x[0]-0.05&&t<x[1]+0.6); if(i!==AUD.now){AUD.now=a.paused&&AUD.end==null?(t>0&&i>=0?i:-1):i;markNow()} syncBtn()}
 function markNow(){document.querySelectorAll('.sent').forEach(e=>e.classList.toggle('now',state.view==='lesson'&&AUD.lid===state.id&&+e.dataset.i===AUD.now&&!AUD.el.paused))}
 function syncBtn(){const b=$('#playAll'); if(b&&AUD.lid===state.id) b.textContent=!AUD.el.paused&&AUD.end==null?'❚❚ Tạm dừng':'▶ Nghe cả truyện'}
-async function playAll(L){const T=TIM(L.id), a=AUD.el; if(!T) return ttsSegs(L.story.flatMap(s=>s[4]));
+async function playAll(L){logAct('story');const T=TIM(L.id), a=AUD.el; if(!T) return ttsSegs(L.story.flatMap(s=>s[4]));
   if(AUD.lid===L.id&&!a.paused&&AUD.end==null){a.pause();return}
   try{ if(WA.el) WA.el.pause(); await ensure(a,T.file); AUD.lid=L.id; AUD.end=null; if(a.ended) a.currentTime=0; await a.play(); syncBtn() }catch(e){toast(failMsg(e))}}
 async function playSent(L,i){const T=TIM(L.id), a=AUD.el; if(!T) return ttsSegs(L.story[i][4]);
@@ -428,7 +457,7 @@ function judge(c,heard){ const h=toks(heard), hs=' '+h.join(' ')+' '; let best=0
 async function chatAnswer(L,heard,fromHint){ const c=L.chat[CH.i]; const j=judge(c,heard); CH.tries++;
   CH.log.push({who:'me',t:heard,score:fromHint?null:j.best,ok:j.accepted||fromHint});
   if(j.accepted||fromHint){ if(!fromHint) CH.ok++; CH.log.push({who:'linh',t:c.re}); renderChat(L); CH.busy=true; await playLine(L,c.re); CH.busy=false;
-    CH.i++; if(CH.i>=L.chat.length){ CH.done=true; CH.log.push({who:'end'}); renderChat(L); return } await chatAsk(L) }
+    CH.i++; if(CH.i>=L.chat.length){ CH.done=true; CH.log.push({who:'end'}); logAct('chat'); renderChat(L); return } await chatAsk(L) }
   else { CH.log.push({who:'hint',t:CH.tries>=2?'Bạn có thể đọc theo một câu gợi ý bên dưới, hoặc bấm Bỏ qua.':'Linh chưa hiểu ý bạn. Thử nói rõ hơn hoặc dùng câu gợi ý nhé.'}); renderChat(L) } }
 function renderChat(L){ const p=$('#panel'); if(!p||state.tab!=='chat') return;
   if(!L.chat||!L.chat.length){p.innerHTML='<section class="card">Chương này chưa có hội thoại.</section>';return}
@@ -481,7 +510,7 @@ function drawPT(){const box=$('#ptBox'); if(!box||!PT) return; const {L,list,i}=
   $('#ptSkip').onclick=()=>{PT.res.push(0);PT.i++;drawPT()};
   $('#ptNext').onclick=()=>{PT.i++;drawPT()};
   $('#ptMic').onclick=async()=>{const m=$('#ptMic'),st=$('#ptS'); m.classList.add('on'); st.textContent='Đang nghe…';
-    try{const r=await recOnce(w.w,t=>{st.textContent='Máy nghe: '+t}); const k=keyOf(L.id,w.w); PRON[k]=Math.max(PRON[k]||0,r.pct); if(r.pct===100) learned.add(k); persist();
+    try{const r=await recOnce(w.w,t=>{st.textContent='Máy nghe: '+t}); const k=keyOf(L.id,w.w); PRON[k]=Math.max(PRON[k]||0,r.pct); logAct('speak'); if(r.pct===100) learned.add(k); persist();
       st.innerHTML=`<b class="pr-score ${scoreCls(r.pct)}">${r.pct===100?'✓ Đúng':'✗ Chưa đúng'}</b><br><span class="muted">Máy nghe: “${esc(r.heard)}”</span>`; PT.res[PT.i]=r.pct; $('#ptNext').hidden=false; if(r.pct===100) setTimeout(()=>{if(PT&&PT.list[PT.i]===w){PT.i++;drawPT()}},1200)}
     catch(e){st.textContent=recErrMsg(e)} m.classList.remove('on')};
 }
@@ -518,9 +547,51 @@ async function runShadow(L){ const ids=pinnedOf(L), T=TIM(L.id); SH.run=true; re
 async function shadowRec(L,i){ const r=$('#shr'+i); const s=plain(L.story[i][0]); if(r) r.innerHTML='<span class="muted">🎤 Đang nghe… hãy nói cả câu</span>';
   try{ const x=await recOnce(s,t=>{if(r) r.innerHTML='<span class="muted">Máy nghe: '+esc(t)+'</span>'});
     const words=s.split(/\s+/); let ti=0; const html=words.map(w=>{const n=toks(w).length; if(!n) return esc(w); const ok=x.ok.slice(ti,ti+n).every(Boolean); ti+=n; return `<span class="pw ${ok?'good':'bad'}">${esc(w)}</span>`}).join(' ');
-    PRON['s:'+L.id+':'+i]=Math.max(PRON['s:'+L.id+':'+i]||0,x.pct); persist();
+    PRON['s:'+L.id+':'+i]=Math.max(PRON['s:'+L.id+':'+i]||0,x.pct); logAct('shadow'); persist();
     r.innerHTML=`<div class="pr-target" style="font-size:18px">${html}</div><div><b class="pr-score ${scoreCls(x.pct)}">${x.pct}%</b> <span class="muted">Máy nghe: “${esc(x.heard)}”</span></div>`;
   }catch(e){ if(r) r.innerHTML='<span class="muted">'+recErrMsg(e)+'</span>' } }
+
+/* ---------- HÔM NAY · LỊCH HỌC VUI ---------- */
+const ds=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const todayStr=()=>ds(new Date());
+function logAct(type){const d=todayStr(); ACT[d]=ACT[d]||{}; ACT[d][type]=(ACT[d][type]||0)+1; try{localStorage.setItem('linh3000.act',JSON.stringify(ACT))}catch(e){}}
+const actN=d=>{const o=ACT[d]; return o?Object.values(o).reduce((a,b)=>a+b,0):0};
+function streak(){let d=new Date(), n=0; if(!actN(ds(d))) d.setDate(d.getDate()-1); while(actN(ds(d))){n++; d.setDate(d.getDate()-1)} return n}
+function bestStreak(){const days=Object.keys(ACT).filter(actN).sort(); let best=0,cur=0,prev=null; days.forEach(k=>{const t=Date.parse(k); cur=prev!=null&&t-prev===864e5?cur+1:1; best=Math.max(best,cur); prev=t}); return best}
+const MILES=[['2026-11-15','Xong A1'],['2026-12-27','Xong A2'],['2027-01-15','Mục tiêu B1'],['2027-02-07','Xong B1'],['2027-03-14','Xong B2']];
+function todayLesson(){return LESSONS.find(L=>lessonDone(L)<Math.ceil(L.words.length*0.8))||LESSONS.at(-1)}
+function slotsFor(o){o=o||{}; return [
+  {t:'6h00',m:'30 phút',name:'Nghe truyện & phát âm',tab:CAN_REC?'speak':'story',done:!!o.story&&!!(o.speak||o.learn||o.flash)},
+  {t:'11h45',m:'15 phút',name:'Thì & thẻ nhớ',tab:'flash',done:!!o.flash},
+  {t:'18h00',m:'15 phút',name:'Shadowing · Nói với Linh · Kiểm tra',tab:'chat',done:!!(o.chat||o.quiz||o.shadow)}]}
+function badges(){const s=bestStreak(), n=oxLearned(), days=Object.keys(ACT).filter(actN).length, chats=Object.values(ACT).reduce((a,o)=>a+(o.chat||0),0), sp=Object.values(PRON).filter(v=>v===100).length;
+  return [['🔥','3 ngày liền',s>=3],['🔥','7 ngày liền',s>=7],['🏆','30 ngày liền',s>=30],['📘','100 từ',n>=100],['📗','250 từ',n>=250],['📙','500 từ',n>=500],['🎓','Xong A1',LESSONS.length&&OX.filter(x=>x[2]==='A1').length<=n],['💬','Trò chuyện 5 lần',chats>=5],['🎤','50 từ phát âm chuẩn',sp>=50],['📅','Học 20 ngày',days>=20]]}
+function todayCard(){const d=new Date(), sun=d.getDay()===0, o=ACT[todayStr()], L=todayLesson(), i=LESSONS.indexOf(L), st=streak(), sl=slotsFor(o), doneN=sl.filter(x=>x.done).length;
+  return `<section class="today">
+    <div class="td-top"><div style="min-width:0"><span class="eyebrow">Hôm nay · ${['Chủ nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'][d.getDay()]} ${d.getDate()}/${d.getMonth()+1}</span>
+      <h2 class="td-title">${sun?'Ngày ôn tập':'Chương '+(i+1)+' · '+esc(L.vi)}</h2>
+      <div class="muted" style="font-size:13px">${sun?'Không học chương mới. Luyện lại các từ phát âm chưa đạt trong tuần.':esc(L.en)+' · '+lessonDone(L)+'/'+L.words.length+' từ đã thuộc'}</div></div>
+      <div class="flame ${st?'on':''}" title="Chuỗi ngày học"><b>${st}</b><span>ngày liền</span></div></div>
+    <div class="slots">${sl.map(x=>`<button class="slot ${x.done?'done':''}" data-open="${L.id}" data-opentab="${sun?'speak':x.tab}"><span class="slot-t">${x.t}</span><span class="slot-n">${x.name}</span><span class="slot-m">${x.done?'✓ Xong':x.m}</span></button>`).join('')}</div>
+    <div class="pl-row" style="justify-content:space-between"><span class="muted" style="font-size:13px">${doneN===3?'Xong cả 3 buổi hôm nay. Giỏi lắm!':'Đã xong '+doneN+'/3 buổi'}</span><button class="btn" data-cal>Xem lịch & huy hiệu →</button></div>
+  </section>`}
+let calM=null;
+function calView(){state={view:'cal'}; const now=new Date(); if(!calM) calM=new Date(now.getFullYear(),now.getMonth(),1);
+  const y=calM.getFullYear(), m=calM.getMonth(), first=new Date(y,m,1), off=(first.getDay()+6)%7, n=new Date(y,m+1,0).getDate(), today=todayStr();
+  const miles=Object.fromEntries(MILES); const mm=MILES.filter(([d])=>Number(d.slice(0,4))===y&&Number(d.slice(5,7))===m+1);
+  const cells=[]; for(let k=0;k<off;k++) cells.push('<span></span>');
+  for(let dd=1;dd<=n;dd++){const k=ds(new Date(y,m,dd)), a=actN(k), lv=a===0?0:a<4?1:a<10?2:3, sun=new Date(y,m,dd).getDay()===0;
+    cells.push(`<span class="cd l${lv} ${k===today?'cd-now':''} ${miles[k]?'mile':''} ${sun?'sun':''}" title="${k}${miles[k]?' · '+miles[k]:''}"><b>${dd}</b>${a?'<i>'+(a>=10?'★':'•')+'</i>':''}</span>`)}
+  const b=badges(), bs=bestStreak(), active=Object.keys(ACT).filter(actN).length;
+  $('#app').innerHTML=`<div class="top"><div class="top-row"><button class="back" data-home aria-label="Về trang chính">←</button><div style="min-width:0"><span class="eyebrow">Lịch học</span><h2>Tháng ${m+1}/${y}</h2></div></div></div>
+  <div class="panel">
+    <section class="card"><div class="stats"><div><b>${streak()}</b><span>ngày liền hiện tại</span></div><div><b>${bs}</b><span>chuỗi dài nhất</span></div><div><b>${active}</b><span>ngày đã học</span></div><div><b>${oxLearned()}</b><span>từ đã thuộc</span></div></div></section>
+    <section class="card"><div class="pl-row" style="justify-content:space-between"><button class="btn" data-calm="-1" aria-label="Tháng trước">‹</button><b>Tháng ${m+1}/${y}</b><button class="btn" data-calm="1" aria-label="Tháng sau">›</button></div>
+      <div class="cal"><span class="wd">T2</span><span class="wd">T3</span><span class="wd">T4</span><span class="wd">T5</span><span class="wd">T6</span><span class="wd">T7</span><span class="wd">CN</span>${cells.join('')}</div>
+      <div class="legend" style="font-size:12px"><span class="cd l0 key"></span>chưa học <span class="cd l1 key"></span>ít <span class="cd l2 key"></span>vừa <span class="cd l3 key"></span>nhiều <span class="cd mile key"></span>mốc lộ trình</div>
+      ${mm.length?`<div style="display:grid;gap:4px">${mm.map(([d,t])=>`<div style="font-size:14px"><b>${Number(d.slice(8))}/${Number(d.slice(5,7))}</b> · ${t}</div>`).join('')}</div>`:''}</section>
+    <section class="card"><span class="eyebrow">Huy hiệu · ${b.filter(x=>x[2]).length}/${b.length}</span><div class="badges">${b.map(([i,t,ok])=>`<div class="bdg ${ok?'ok':''}"><span>${i}</span><small>${t}</small></div>`).join('')}</div></section>
+  </div>`; window.scrollTo(0,0)}
 
 /* ---------- OXFORD LIST ---------- */
 let ox={lv:'all',st:'all',q:'',n:150};
@@ -609,8 +680,8 @@ function drawFlash(L){
   <div class="toolbar" style="justify-content:center">${sayBtn(w.w,'🔊 nghe từ')}</div>
   <div class="fc-actions"><button class="btn" id="no">Chưa nhớ</button><button class="btn primary" id="yes">Đã nhớ ✓</button></div>`;
   $('#fc').onclick=()=>{flipped=!flipped;drawFlash(L)};
-  $('#no').onclick=()=>{learned.delete(keyOf(L.id,w.w));persist();fi++;flipped=false;drawFlash(L)};
-  $('#yes').onclick=()=>{learned.add(keyOf(L.id,w.w));persist();fi++;flipped=false;drawFlash(L)};
+  $('#no').onclick=()=>{learned.delete(keyOf(L.id,w.w));logAct('flash');persist();fi++;flipped=false;drawFlash(L)};
+  $('#yes').onclick=()=>{learned.add(keyOf(L.id,w.w));logAct('flash');persist();fi++;flipped=false;drawFlash(L)};
 }
 
 /* ---------- QUIZ ---------- */
@@ -631,7 +702,7 @@ function startQuiz(L){
 }
 function drawQ(L){
   const p=$('#panel');
-  if(qi>=qs.length){p.innerHTML=`<section class="card" style="text-align:center"><span class="eyebrow">Kết quả</span><div class="score">${score}/${qs.length}</div><p>${score>=8?'Rất tốt! Các từ trả lời đúng đã được đánh dấu đã thuộc.':'Hãy đọc lại truyện và ôn thẻ nhớ rồi thử lại nhé.'}</p><button class="btn primary" id="again">Làm bài mới</button></section>`;$('#again').onclick=()=>startQuiz(L);return}
+  if(qi>=qs.length){logAct('quiz');persist();p.innerHTML=`<section class="card" style="text-align:center"><span class="eyebrow">Kết quả</span><div class="score">${score}/${qs.length}</div><p>${score>=8?'Rất tốt! Các từ trả lời đúng đã được đánh dấu đã thuộc.':'Hãy đọc lại truyện và ôn thẻ nhớ rồi thử lại nhé.'}</p><button class="btn primary" id="again">Làm bài mới</button></section>`;$('#again').onclick=()=>startQuiz(L);return}
   const Q=qs[qi];
   p.innerHTML=`<div class="count">Câu ${qi+1} / ${qs.length} · Đúng ${score}</div><section class="card"><div class="q">${Q.q}</div><div class="opts">${Q.opts.map(o=>`<button class="opt" data-o="${esc(o)}">${esc(o)}</button>`).join('')}</div><div id="fb"></div></section>`;
   p.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{
@@ -670,9 +741,11 @@ document.addEventListener('click',e=>{
   if(t.dataset.shrec!==undefined){shadowRec(LESSONS.find(l=>l.id===state.id),+t.dataset.shrec); return}
   if(t.dataset.ptone!==undefined){pronOne(LESSONS.find(l=>l.id===state.id),t.dataset.ptone); return}
   if(t.dataset.close!==undefined){closeSheet();return}
-  if(t.dataset.learn){const k=t.dataset.learn;learned.has(k)?learned.delete(k):learned.add(k);persist();const inSheet=t.closest('.sheet');closeSheet();refresh();if(inSheet)return;return}
+  if(t.dataset.learn){const k=t.dataset.learn;learned.has(k)?learned.delete(k):learned.add(k);logAct('learn');persist();const inSheet=t.closest('.sheet');closeSheet();refresh();if(inSheet)return;return}
   if(t.dataset.w){openSheet(t.dataset.l,t.dataset.w);return}
-  if(t.dataset.open){lesson(t.dataset.open);return}
+  if(t.dataset.open){lesson(t.dataset.open,t.dataset.opentab);return}
+  if(t.dataset.cal!==undefined){calM=null;calView();return}
+  if(t.dataset.calm){calM=new Date(calM.getFullYear(),calM.getMonth()+(+t.dataset.calm),1);calView();return}
   if(t.dataset.home!==undefined){home();return}
   if(t.dataset.ox!==undefined){oxView();window.scrollTo(0,0);return}
   if(t.dataset.oxlv){ox.lv=t.dataset.oxlv;ox.n=150;oxView();return}
@@ -683,7 +756,7 @@ document.addEventListener('click',e=>{
   if(t.dataset.rate){rate=+t.dataset.rate;if(AUD.el)AUD.el.playbackRate=rate;document.querySelectorAll('[data-rate]').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.rate===rate));return}
 });
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
-function refresh(){if(state.view==='home'){home()}else if(state.view==='ox'){drawOx()}else if(!['flash','quiz'].includes(state.tab))renderTab()}
+function refresh(){if(state.view==='cal'){calView()}else if(state.view==='home'){home()}else if(state.view==='ox'){drawOx()}else if(!['flash','quiz'].includes(state.tab))renderTab()}
 const start=()=>{const h=(location.hash||'').slice(1);LESSONS.some(l=>l.id===h)?lesson(h):home()};
 start();
 cloudInit();
